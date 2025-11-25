@@ -1,3 +1,6 @@
+# this is intentional, don't remove this!
+backend/src/backend/static
+
 database.db
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,node,macos
