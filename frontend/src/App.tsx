@@ -23,6 +23,8 @@ function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingUserInput, setPendingUserInput] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
  const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean }) => {
   return (
@@ -163,6 +165,26 @@ function App() {
     }
   };
 
+  const fetchMessages = async (conversationId: number) => {
+  try {
+    setIsLoading(true);
+    const response = await fetch(`http://localhost:8100/conversations/${conversationId}/messages`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch messages: ${response.status}`);
+    }
+    
+    const fetchedMessages = await response.json(); // Parse the JSON!
+    setMessages(fetchedMessages);
+    setError(''); 
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    setError('Failed to load messages');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
 
 
@@ -205,19 +227,15 @@ function App() {
 
   
   const handleConversationClick = async (conversationId: number) => {
-    try {
-      setCurrentConversation(
-        conversations.find(c => c.id === conversationId) || null
-      );
-
-      const response = await fetch(
-        `http://localhost:8100/conversations/${conversationId}/messages`
-      );
-      const messagesData = await response.json();
-      setMessages(messagesData);
-    } catch (error) {
-      console.error('Error fetching conversation messages:', error);
-    }
+  try {
+    const conversation = conversations.find(c => c.id === conversationId) || null;
+    setCurrentConversation(conversation);
+    setError(''); 
+    await fetchMessages(conversationId); 
+  } catch (error) {
+    console.error('Error fetching conversation messages:', error);
+    setError('Failed to load conversation');
+  }
 };
 
 
@@ -228,68 +246,53 @@ function App() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  if (!input.trim() || isLoading) return;
 
-    const userInput = input;
-    setInput('');
-    setIsLoading(true);
-
-    const tempUserMessage: Message = {
-      id: Date.now(),
-      role: 'user',
-      content: userInput,
-      conversation_id: currentConversation?.id || 0,
-      created_at: new Date().toISOString()
-    };
-    
-  
-    setMessages((prev) => [...prev, tempUserMessage]);
-
-    try {
-      let conversationId = currentConversation?.id;
-      
-      if (!currentConversation) {
-        const title = "Conversation"; 
-        const newConversation = await createConversation(title);
-        
-        setCurrentConversation(newConversation);
-        conversationId = newConversation.id;
-        
-    
-        fetchConversations();
-      }
+  const userInput = input;
+  setInput('');
+  setIsLoading(true);
+  setError(''); 
 
   
-      console.log('Sending message to backend...');
-      // const aiResponse = await createMessage({
-      //   content: userInput,
-      //   role: 'user',
-      //   conversation_id: conversationId
-      // });
-      const aiResponse = await createMessage(conversationId!, userInput);
+  setPendingUserInput(userInput);
 
-      
-      console.log('Received AI response:', aiResponse);
-      
-     
-      setMessages((prev) => [...prev, aiResponse]);
-
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      
-      const errorMessage: Message = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: `Error: ${error.message || 'Could not get response from AI'}`,
-        conversation_id: currentConversation?.id || 0,
-        created_at: new Date().toISOString()
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+  try {
+    let conversationId = currentConversation?.id;
+    
+    if (!currentConversation) {
+      const title = userInput.substring(0, 50); 
+      const newConversation = await createConversation(title);
+      setCurrentConversation(newConversation);
+      conversationId = newConversation.id;
+      fetchConversations();
     }
-  };
 
+  
+    console.log('Sending message to backend...');
+    const aiResponse = await createMessage(conversationId!, userInput);
+    
+    console.log('Received AI response:', aiResponse);
+    
+
+    await fetchMessages(conversationId!);
+    
+
+    setPendingUserInput('');
+
+  } catch (error: any) {
+    console.error('Error sending message:', error);
+    
+    
+    setError(`Failed to send message: ${error.message || 'Please try again'}`);
+    
+    
+    setInput(userInput);
+    
+  } finally {
+    setIsLoading(false);
+    setPendingUserInput('');
+  }
+};
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
@@ -333,6 +336,18 @@ function App() {
 
       {/* Main Content */}
       <div className='flex-1 flex flex-col'>
+        {/* Error Display */}
+        {error && (
+          <div className='bg-red-50 border border-red-200 p-3 mx-4 mt-4 rounded-lg flex justify-between items-center'>
+            <span className='text-red-700 flex-1'>{error}</span>
+            <button 
+              onClick={() => setError('')}
+              className='text-red-500 hover:text-red-700 text-xl ml-2'
+            >
+              ×
+            </button>
+          </div>
+        )}
         {/* Messages Area */}
         <div className='flex-1 overflow-y-auto p-4 space-y-4'>
           {messages.map((msg) => (
@@ -360,6 +375,20 @@ function App() {
             </div>
           ))}
           
+           {/* Show pending user message (optimistic UI) */}
+          {pendingUserInput && (
+            <div className='flex justify-end animate-fadeIn'>
+              <div className='max-w-[70%] rounded-lg p-3 bg-blue-500 text-white opacity-70'>
+                <div className="whitespace-pre-wrap">{pendingUserInput}</div>
+                <div className='flex items-center justify-end space-x-1 mt-2'>
+                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce'></div>
+                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
+                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {isLoading && (
             <div className='flex justify-start'>
               <div className='max-w-[70%] rounded-lg p-3 bg-white border border-gray-200'>
@@ -381,6 +410,7 @@ function App() {
             </div>
           )}
         </div>
+
 
         {/* Input Area */}
         <div className='p-4 border-t border-gray-200 bg-white'>
