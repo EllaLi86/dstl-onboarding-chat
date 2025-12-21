@@ -15,11 +15,7 @@ type Message = {
   created_at: string;
 };
 
-type MessageCreate = {
-  content: string;
-  role: 'user' | 'assistant';
-  conversation_id?: number;
-};
+
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,9 +24,7 @@ function App() {
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ADD THIS COMPONENT - Markdown message component
-
-const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean }) => {
+ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean }) => {
   return (
     <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`}>
       <ReactMarkdown
@@ -55,14 +49,14 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
           },
           ul({ node, children, ...props }: any) {
             return (
-              <ul className="list-disc pl-5 my-2 space-y-1" {...props}>
+              <ul className="list-disc pl-5" {...props}>
                 {children}
               </ul>
             );
           },
           ol({ node, children, ...props }: any) {
             return (
-              <ol className="list-decimal pl-5 my-2 space-y-1" {...props}>
+              <ol className="list-decimal pl-5" {...props}>
                 {children}
               </ol>
             );
@@ -151,9 +145,10 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
     </div>
   );
 };
-// export default MarkdownMessage;
 
-  // Fetch conversations on component mount
+
+
+  
   useEffect(() => {
     fetchConversations();
   }, []);
@@ -168,6 +163,10 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
     }
   };
 
+
+
+
+
   const createConversation = async (title: string): Promise<Conversation> => {
     const response = await fetch('http://localhost:8100/conversations/', {
       method: 'POST',
@@ -179,38 +178,48 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
     return response.json();
   };
 
-  const createMessage = async (message: MessageCreate): Promise<Message> => {
-    const response = await fetch('http://localhost:8100/messages/', {
+  const createMessage = async (
+  conversationId: number,
+  content: string
+): Promise<Message> => {
+  const response = await fetch(
+    `http://localhost:8100/conversations/${conversationId}/messages`,
+    {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(message),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to send message: ${response.status} - ${errorText}`);
+      body: JSON.stringify({ content }),
     }
-    
-    return response.json();
-  };
+  );
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to send message: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+};
+
+
+
+  
   const handleConversationClick = async (conversationId: number) => {
     try {
-      const response = await fetch(`http://localhost:8100/conversations/${conversationId}/messages/`);
+      setCurrentConversation(
+        conversations.find(c => c.id === conversationId) || null
+      );
+
+      const response = await fetch(
+        `http://localhost:8100/conversations/${conversationId}/messages`
+      );
       const messagesData = await response.json();
-      
-      const conversation = conversations.find(c => c.id === conversationId);
-      if (conversation) {
-        setCurrentConversation(conversation);
-      }
-      
       setMessages(messagesData);
     } catch (error) {
       console.error('Error fetching conversation messages:', error);
     }
-  };
+};
+
 
   const handleNewChat = () => {
     setCurrentConversation(null);
@@ -225,7 +234,6 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
     setInput('');
     setIsLoading(true);
 
-    // Create temporary user message for immediate UI feedback
     const tempUserMessage: Message = {
       id: Date.now(),
       role: 'user',
@@ -234,13 +242,12 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
       created_at: new Date().toISOString()
     };
     
-    // Add user message to UI immediately
+  
     setMessages((prev) => [...prev, tempUserMessage]);
 
     try {
       let conversationId = currentConversation?.id;
       
-      // If no current conversation, create a new one
       if (!currentConversation) {
         const title = "Conversation"; 
         const newConversation = await createConversation(title);
@@ -248,21 +255,23 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
         setCurrentConversation(newConversation);
         conversationId = newConversation.id;
         
-        // Refresh conversations list
+    
         fetchConversations();
       }
 
-      // Send message to backend - this should return AI response
+  
       console.log('Sending message to backend...');
-      const aiResponse = await createMessage({
-        content: userInput,
-        role: 'user',
-        conversation_id: conversationId
-      });
+      // const aiResponse = await createMessage({
+      //   content: userInput,
+      //   role: 'user',
+      //   conversation_id: conversationId
+      // });
+      const aiResponse = await createMessage(conversationId!, userInput);
+
       
       console.log('Received AI response:', aiResponse);
       
-      // Add AI response to messages
+     
       setMessages((prev) => [...prev, aiResponse]);
 
     } catch (error: any) {
