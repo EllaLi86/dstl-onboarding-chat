@@ -17,6 +17,7 @@ type Message = {
 
 
 
+
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -26,120 +27,16 @@ function App() {
   const [pendingUserInput, setPendingUserInput] = useState<string>('');
   const [error, setError] = useState<string>('');
 
- const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean }) => {
+
+
+const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean }) => {
   return (
-    <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`}>
+    <div className={isUser ? 'user-message' : 'ai-message'}>
       <ReactMarkdown
         components={{
-          code({ node, inline, className, children, ...props }: any) {
-            // Add ': any' to fix TypeScript error temporarily
-            // Or install @types/react-markdown for proper typing
-            return inline ? (
-              <code 
-                className={`${isUser ? 'bg-gray-700 text-gray-100' : 'bg-gray-100 text-gray-800'} rounded px-1 py-0.5 text-sm font-mono`} 
-                {...props}
-              >
-                {children}
-              </code>
-            ) : (
-              <pre className={`${isUser ? 'bg-gray-800' : 'bg-gray-100'} rounded p-3 overflow-x-auto my-2`}>
-                <code className="text-sm font-mono" {...props}>
-                  {children}
-                </code>
-              </pre>
-            );
-          },
-          ul({ node, children, ...props }: any) {
-            return (
-              <ul className="list-disc pl-5" {...props}>
-                {children}
-              </ul>
-            );
-          },
-          ol({ node, children, ...props }: any) {
-            return (
-              <ol className="list-decimal pl-5" {...props}>
-                {children}
-              </ol>
-            );
-          },
-          li({ node, children, ...props }: any) {
-            return (
-              <li className="my-1" {...props}>
-                {children}
-              </li>
-            );
-          },
-          strong({ node, children, ...props }: any) {
-            return (
-              <strong className="font-semibold" {...props}>
-                {children}
-              </strong>
-            );
-          },
-          em({ node, children, ...props }: any) {
-            return (
-              <em className="italic" {...props}>
-                {children}
-              </em>
-            );
-          },
-          a({ node, children, href, ...props }: any) {
-            return (
-              <a 
-                href={href} 
-                className={`${isUser ? 'text-blue-300 hover:text-blue-100' : 'text-blue-600 hover:text-blue-800'} underline`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                {...props}
-              >
-                {children}
-              </a>
-            );
-          },
-          h1({ node, children, ...props }: any) {
-            return (
-              <h1 className="text-2xl font-bold mt-4 mb-2" {...props}>
-                {children}
-              </h1>
-            );
-          },
-          h2({ node, children, ...props }: any) {
-            return (
-              <h2 className="text-xl font-bold mt-3 mb-2" {...props}>
-                {children}
-              </h2>
-            );
-          },
-          h3({ node, children, ...props }: any) {
-            return (
-              <h3 className="text-lg font-bold mt-2 mb-1" {...props}>
-                {children}
-              </h3>
-            );
-          },
-          blockquote({ node, children, ...props }: any) {
-            return (
-              <blockquote 
-                className={`border-l-4 ${isUser ? 'border-gray-500' : 'border-gray-300'} pl-4 my-2 italic`} 
-                {...props}
-              >
-                {children}
-              </blockquote>
-            );
-          },
-          p({ node, children, ...props }: any) {
-            return (
-              <p className="my-2" {...props}>
-                {children}
-              </p>
-            );
-          },
-          hr({ node, ...props }: any) {
-            return (
-              <hr className={`my-4 ${isUser ? 'border-gray-600' : 'border-gray-300'}`} {...props} />
-            );
-          },
+          ul: ({ children }) => <ul className="list-disc pl-5 my-2">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 my-2">{children}</ol>,
+          li: ({ children }) => <li className="my-1">{children}</li>
         }}
       >
         {content}
@@ -375,20 +272,6 @@ function App() {
             </div>
           ))}
           
-           {/* Show pending user message (optimistic UI) */}
-          {pendingUserInput && (
-            <div className='flex justify-end animate-fadeIn'>
-              <div className='max-w-[70%] rounded-lg p-3 bg-blue-500 text-white opacity-70'>
-                <div className="whitespace-pre-wrap">{pendingUserInput}</div>
-                <div className='flex items-center justify-end space-x-1 mt-2'>
-                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce'></div>
-                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
-                  <div className='w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-          
           {isLoading && (
             <div className='flex justify-start'>
               <div className='max-w-[70%] rounded-lg p-3 bg-white border border-gray-200'>
@@ -410,7 +293,6 @@ function App() {
             </div>
           )}
         </div>
-
 
         {/* Input Area */}
         <div className='p-4 border-t border-gray-200 bg-white'>
