@@ -1,8 +1,11 @@
+import os
 from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -28,6 +31,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Only serve static files in production
+if os.getenv("ENVIRONMENT") == "production":
+    static_path = "src/backend/static"
+
+    print(f"Static path: {static_path}")
+    print(f"Exists: {os.path.exists(static_path)}")
+
+    if os.path.exists(static_path):
+        print(f"Files: {os.listdir(static_path)}")
+
+        app.mount(
+            "/app",
+            StaticFiles(directory=static_path, html=True),
+            name="static",
+        )
+
+        @app.get("/")
+        async def root():
+            return RedirectResponse(url="/app/")
+    else:
+        print(f"ERROR: Static directory not found at {static_path}")
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.post("/conversations/", response_model=Conversation)

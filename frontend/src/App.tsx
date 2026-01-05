@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+console.log("API_BASE_URL:", API_BASE_URL);
 
 type Conversation = {
   id: number;
@@ -24,7 +27,7 @@ function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingUserInput, setPendingUserInput] = useState<string>('');
+  const [, setPendingUserInput] = useState<string>('');
   const [error, setError] = useState<string>('');
 
 
@@ -54,7 +57,7 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch('http://localhost:8100/conversations/');
+      const response = await fetch(`${API_BASE_URL}/conversations/`);
       const data = await response.json();
       setConversations(data);
     } catch (error) {
@@ -65,7 +68,7 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
   const fetchMessages = async (conversationId: number) => {
   try {
     setIsLoading(true);
-    const response = await fetch(`http://localhost:8100/conversations/${conversationId}/messages`);
+    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch messages: ${response.status}`);
@@ -87,7 +90,7 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
 
 
   const createConversation = async (title: string): Promise<Conversation> => {
-    const response = await fetch('http://localhost:8100/conversations/', {
+    const response = await fetch(`${API_BASE_URL}/conversations/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +105,7 @@ const MarkdownMessage = ({ content, isUser }: { content: string; isUser: boolean
   content: string
 ): Promise<Message> => {
   const response = await fetch(
-    `http://localhost:8100/conversations/${conversationId}/messages`,
+    `${API_BASE_URL}/conversations/${conversationId}/messages`,
     {
       method: 'POST',
       headers: {
